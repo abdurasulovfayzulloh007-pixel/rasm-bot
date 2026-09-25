@@ -1,0 +1,2 @@
+aiogram>=3.4
+Pillow>=10.1
