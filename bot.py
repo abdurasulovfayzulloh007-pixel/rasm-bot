@@ -152,7 +152,9 @@ async def on_document(m: types.Message, bot: Bot):
 
 
 async def main():
-    await dp.start_polling(Bot(BOT_TOKEN))
+    bot = Bot(BOT_TOKEN)
+    await bot.delete_webhook(drop_pending_updates=True)  # eski webhook bo'lsa, o'chiramiz
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
