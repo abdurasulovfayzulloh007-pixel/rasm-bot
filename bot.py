@@ -12,7 +12,12 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8905452846:AAEwf8sYDO2IDDq7h3AplmsF6wOqlJbwC3Q")
 
 BASE = Path(__file__).parent
-LOGO_PATH = BASE / "logo.png"       # logo fayli bot.py bilan bir papkada bo'lsin
+LOGO_PATHS = {
+    "1": BASE / "logo1.png",   # /logo1 buyrug'i shu faylni yoqadi
+    "2": BASE / "logo2.png",   # /logo2 buyrug'i shu faylni yoqadi
+}
+DEFAULT_LOGO = "1"
+user_logo_choice: dict[int, str] = {}   # har bir foydalanuvchining tanlovi (xotirada saqlanadi)
 
 # Barcha o'lchamlar rasm KENGLIGIGA nisbatan (0.10 = 10%)
 LOGO_WIDTH_RATIO = 0.365    # logo kengligi (bo'sh chetlari kesib tashlanadi)
@@ -74,13 +79,13 @@ def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_width: float) -> s
     return "\n".join(lines)
 
 
-def process_image(data: bytes, text: str) -> bytes:
+def process_image(data: bytes, text: str, logo_path: Path) -> bytes:
     img = ImageOps.exif_transpose(Image.open(BytesIO(data))).convert("RGBA")
     w, h = img.size
 
     # 1) Logo: chap yuqori burchak
-    if LOGO_PATH.exists():
-        logo = Image.open(LOGO_PATH).convert("RGBA")
+    if logo_path.exists():
+        logo = Image.open(logo_path).convert("RGBA")
         content = logo.getchannel("A").getbbox()   # shaffof bo'sh chetlarni kesamiz
         if content:
             logo = logo.crop(content)
@@ -121,8 +126,23 @@ dp = Dispatcher()
 async def start(m: types.Message):
     await m.answer(
         "Salom! Menga rasm yuboring va rasm izohiga (caption) matn yozing.\n"
-        "Men matnni o'ng pastki burchakka, logoni chap yuqori burchakka qo'yib qaytaraman."
+        "Men matnni o'ng pastki burchakka, logoni chap yuqori burchakka qo'yib qaytaraman.\n\n"
+        "Ikkita logo bor, tanlash uchun:\n"
+        "/logo1 — birinchi logo\n"
+        "/logo2 — ikkinchi logo"
     )
+
+
+@dp.message(F.text == "/logo1")
+async def choose_logo1(m: types.Message):
+    user_logo_choice[m.from_user.id] = "1"
+    await m.answer("Birinchi logo tanlandi. Endi shu logo bilan ishlanadi.")
+
+
+@dp.message(F.text == "/logo2")
+async def choose_logo2(m: types.Message):
+    user_logo_choice[m.from_user.id] = "2"
+    await m.answer("Ikkinchi logo tanlandi. Endi shu logo bilan ishlanadi.")
 
 
 async def handle(m: types.Message, bot: Bot, file, as_document: bool):
@@ -130,8 +150,11 @@ async def handle(m: types.Message, bot: Bot, file, as_document: bool):
         await m.answer("Rasm bilan birga izohga matn ham yozing.")
         return
 
+    choice = user_logo_choice.get(m.from_user.id, DEFAULT_LOGO)
+    logo_path = LOGO_PATHS[choice]
+
     buf = await bot.download(file)
-    result = await asyncio.to_thread(process_image, buf.getvalue(), m.caption)
+    result = await asyncio.to_thread(process_image, buf.getvalue(), m.caption, logo_path)
     out_file = BufferedInputFile(result, filename="result.jpg")
 
     if as_document:
