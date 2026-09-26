@@ -20,7 +20,8 @@ DEFAULT_LOGO = "1"
 user_logo_choice: dict[int, str] = {}   # har bir foydalanuvchining tanlovi (xotirada saqlanadi)
 
 # Barcha o'lchamlar rasm KENGLIGIGA nisbatan (0.10 = 10%)
-LOGO_WIDTH_RATIO = 0.365    # logo kengligi (bo'sh chetlari kesib tashlanadi)
+LOGO_HEIGHT_RATIO = 0.094   # logo balandligi (turli proporsiyali logolar shu balandlikka moslanadi)
+LOGO_MAX_WIDTH_RATIO = 0.50 # logo juda keng chiqib ketmasligi uchun cheklov
 LOGO_MARGIN_RATIO = 0.025   # logo chap va yuqori chetdan masofasi
 
 TEXT_CAP_RATIO = 0.027      # bosh harflar balandligi (matn o'lchami)
@@ -89,8 +90,12 @@ def process_image(data: bytes, text: str, logo_path: Path) -> bytes:
         content = logo.getchannel("A").getbbox()   # shaffof bo'sh chetlarni kesamiz
         if content:
             logo = logo.crop(content)
-        logo_w = int(w * LOGO_WIDTH_RATIO)
-        logo_h = max(int(logo.height * logo_w / logo.width), 1)
+        logo_h = int(w * LOGO_HEIGHT_RATIO)
+        logo_w = max(int(logo.width * logo_h / logo.height), 1)
+        max_w = int(w * LOGO_MAX_WIDTH_RATIO)
+        if logo_w > max_w:                          # juda keng logo bo'lsa, kenglikka qarab cheklaymiz
+            logo_w = max_w
+            logo_h = max(int(logo.height * logo_w / logo.width), 1)
         logo = logo.resize((logo_w, logo_h), Image.LANCZOS)
         lm = int(w * LOGO_MARGIN_RATIO)
         img.alpha_composite(logo, (lm, lm))
