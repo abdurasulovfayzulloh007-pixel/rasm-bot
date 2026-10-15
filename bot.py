@@ -32,6 +32,9 @@ TEXT_COLOR = "black"        # matn rangi
 STROKE_COLOR = "white"      # matn atrofidagi yupqa kontur (qorong'i rasmda o'qilishi uchun)
 STROKE_RATIO = 0.0          # kontur qalinligi (harf balandligiga nisbatan), 0 = kontursiz
 
+MAX_DIMENSION = 1600        # rasmning eng katta tomoni shundan oshmaydi (tezlik uchun)
+JPEG_QUALITY = 90           # chiqish rasm sifati (85-95 oralig'i yetarli, kichikroq fayl = tezroq)
+
 # Shrift: o'zingizning shriftingizni "font.ttf" nomi bilan shu papkaga qo'ysangiz,
 # birinchi shu ishlatiladi. Aks holda ro'yxat bo'yicha birinchi topilgani olinadi.
 FONT_CANDIDATES = [
@@ -82,6 +85,13 @@ def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, max_width: float) -> s
 
 def process_image(data: bytes, text: str, logo_path: Path) -> bytes:
     img = ImageOps.exif_transpose(Image.open(BytesIO(data))).convert("RGBA")
+
+    # Juda katta rasmlarni kichraytiramiz (tezlik uchun; ko'zga sifat deyarli farqlanmaydi)
+    if max(img.size) > MAX_DIMENSION:
+        scale = MAX_DIMENSION / max(img.size)
+        new_size = (max(int(img.width * scale), 1), max(int(img.height * scale), 1))
+        img = img.resize(new_size, Image.LANCZOS)
+
     w, h = img.size
 
     # 1) Logo: chap yuqori burchak
@@ -120,7 +130,7 @@ def process_image(data: bytes, text: str, logo_path: Path) -> bytes:
     )
 
     out = BytesIO()
-    img.convert("RGB").save(out, "JPEG", quality=95)
+    img.convert("RGB").save(out, "JPEG", quality=JPEG_QUALITY)
     return out.getvalue()
 
 
